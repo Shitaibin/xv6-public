@@ -5,7 +5,7 @@
 static void
 putc(int fd, char c)
 {
-  write(fd, &c, 1);
+  write(fd, &c, 1); /* system call */
 }
 
 static void
@@ -56,10 +56,10 @@ printf(int fd, char *fmt, ...)
   /* state: meet `%` or not */
   int c, i, state;
   /* ap: the address of the real values. why int ????? */
-  uint *ap;
+  uint *ap; /* argp */
 
   state = 0;
-  ap = (uint*)(void*)&fmt + 1; /* why? */
+  ap = (uint*)(void*)&fmt + 1; /* lower address of stack, but why it works??  */
   for(i = 0; fmt[i]; i++){
     c = fmt[i] & 0xff;  /* get current */
     if(state == 0){
