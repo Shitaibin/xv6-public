@@ -132,27 +132,31 @@ cgaputc(int c)
   int pos;
   
   // Cursor position: col + 80*row.
+  // 80 is the maximum length of a line
+  // can repalce it witch a define
+#define LINE_LEN 80
   outb(CRTPORT, 14);
   pos = inb(CRTPORT+1) << 8;
   outb(CRTPORT, 15);
   pos |= inb(CRTPORT+1);
 
   if(c == '\n')
-    pos += 80 - pos%80;
+    pos += LINE_LEN - pos%LINE_LEN;
   else if(c == BACKSPACE){
     if(pos > 0) --pos;
   } else
     crt[pos++] = (c&0xff) | 0x0700;  // black on white
 
-  if(pos < 0 || pos > 25*80)
+  if(pos < 0 || pos > 25*LINE_LEN)
     panic("pos under/overflow");
   
-  if((pos/80) >= 24){  // Scroll up.
-    memmove(crt, crt+80, sizeof(crt[0])*23*80);
-    pos -= 80;
-    memset(crt+pos, 0, sizeof(crt[0])*(24*80 - pos));
+  if((pos/LINE_LEN) >= 24){  // Scroll up.
+    memmove(crt, crt+LINE_LEN, sizeof(crt[0])*23*LINE_LEN);
+    pos -= LINE_LEN;
+    memset(crt+pos, 0, sizeof(crt[0])*(24*LINE_LEN - pos));
   }
   
+#undef LINE_LEN
   outb(CRTPORT, 14);
   outb(CRTPORT+1, pos>>8);
   outb(CRTPORT, 15);
@@ -163,6 +167,7 @@ cgaputc(int c)
 void
 consputc(int c)
 {
+  /* trap in to panick */
   if(panicked){
     cli();
     for(;;)
@@ -287,9 +292,9 @@ consoleinit(void)
 {
   initlock(&cons.lock, "console");
 
-  devsw[CONSOLE].write = consolewrite;
-  devsw[CONSOLE].read = consoleread;
-  cons.locking = 1;
+  devsw[CONSOLE].write = consolewrite;    /* function pointer */
+  devsw[CONSOLE].read = consoleread;      /* device is file, supply user defined function */
+  cons.locking = 1;   /* screen is critical resource */
 
   picenable(IRQ_KBD);
   ioapicenable(IRQ_KBD, 0);
